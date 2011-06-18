@@ -1,0 +1,52 @@
+doc = Customer.find_one do |f|
+  f.criteria = { "name" => "Ben" }
+  f.opts  = { fields: { "interests" => 1 } }
+end
+
+resp = c.insert do |u|
+  u.opts = { safe: true }
+end
+
+resp = c.update do |u|
+  # Eg. only update if jumps is still lte 100 in the db:
+  # u.criteria = { "jumps" => { "$lte" => 100 } }
+  u.opts = { safe: true }
+end
+
+resp = c.atomic_update do |u|
+  u.criteria = { "jumps" => { "$lte" => 100 } }
+
+  u.modifiers = {
+    "jumps"     => { "$inc" => 5 }
+    "interests" => { "$push" => "travel" }
+    "emails"    => { "$push" => { "addr" => "ben.myles@gmail.com", "type" => "personal" } }
+  }
+
+  # This is needed if you want to run validations
+  # and it is suggested if you don't do find_and_modify
+  # note that your document is not _guaranteed_ to be exactly like this
+  # in the DB. It's an approximation.
+  u.will_change_to do |curr_doc|
+    curr_doc["jumps"] ||= 0
+    curr_doc["jumps"]  += 5
+
+    curr_doc["interests"] ||= []
+    curr_doc["interests"]  << "travel"
+
+    curr_doc["emails"] ||= []
+    curr_doc["emails"]  << { "addr" => "ben.myles@gmail.com", "type" => "personal" }
+  end
+
+  #u.skip_validator!
+
+  u.opts = { safe: true }
+  #u.opts = { safe: true, find_and_modify: true }
+end
+
+c.remove(criteria: {}, opts: {})
+
+resp = c.remove do |r|
+  # Eg. only remove if jumps is 0 in the db:
+  # r.criteria = { "jumps" => 0 }
+  f.opts = { safe: true }
+end
